@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LogLens - Security Log SIEM & Threat Analysis</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              bg: '#090D16',
+              card: '#111827',
+              border: '#1F2937',
+              accent: '#3B82F6',
+              red: '#EF4444',
+              yellow: '#F59E0B',
+              green: '#10B981'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #090D16; color: #F3F4F6; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0B0F19; }
+    ::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #374151; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Navbar -->
+  <header class="border-b border-gray-800 bg-[#0B0F19]/90 backdrop-blur sticky top-0 z-50 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3 cursor-pointer" onclick="resetDashboard()">
+        <div class="p-2 bg-blue-600/20 border border-blue-500/30 rounded-lg text-blue-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-lg tracking-tight text-white">LogLens</span>
+            <span class="text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-mono">SIEM-Lite</span>
+          </div>
+          <p class="text-xs text-gray-400">Automated Security Log Analysis & Threat Detection</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-3 py-1.5 rounded-md font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Regex Engine Active</span>
+        </div>
+        <button id="btnNewLog" onclick="resetDashboard()" class="hidden text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md border border-gray-700 transition">
+          Analyze New Log
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+
+    <!-- Notification / Loading Bar -->
+    <div id="statusToast" class="hidden mb-6 p-4 rounded-xl bg-blue-950/40 border border-blue-800/60 text-blue-300 text-sm flex items-center space-x-3 shadow-lg">
+      <div class="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin"></div>
+      <span id="statusText">Processing security log...</span>
+    </div>
+
+    <div id="errorToast" class="hidden mb-6 p-4 rounded-xl bg-red-950/40 border border-red-800/60 text-red-300 text-sm flex items-center space-x-3 shadow-lg">
+      <svg class="w-5 h-5 text-red-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+      <span id="errorText">Error message</span>
+    </div>
+
+    <!-- Upload Hero View -->
+    <div id="uploadView" class="max-w-4xl mx-auto my-6 px-4">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl font-extrabold text-white tracking-tight sm:text-4xl mb-3">
+          Instant Threat Detection for Web Server Logs
+        </h1>
+        <p class="text-base text-gray-400 max-w-2xl mx-auto">
+          Upload Nginx or Apache access logs to instantly uncover SQL injection attempts, XSS payloads, directory traversals, and brute-force attacks.
+        </p>
+      </div>
+
+      <div id="dropzone" class="border-2 border-dashed border-gray-700 hover:border-gray-600 bg-[#111827]/60 rounded-2xl p-8 text-center transition-all backdrop-blur shadow-xl">
+        <input type="file" id="fileInput" accept=".log,.txt,text/plain" class="hidden" onchange="handleFileSelected(event)">
+        
+        <div class="flex flex-col items-center justify-center space-y-4">
+          <div class="p-4 bg-gray-800/80 rounded-full border border-gray-700 text-blue-400">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          </div>
+
+          <div>
+            <p id="selectedFileName" class="text-lg font-medium text-white mb-1">Drag & drop your web server log file here</p>
+            <p class="text-xs text-gray-400">Supports Apache & Nginx Common Log Format (CLF) & Combined Format (.log, .txt)</p>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button onclick="document.getElementById('fileInput').click()" class="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 text-sm font-medium rounded-lg border border-gray-700 transition">
+              Browse Local File
+            </button>
+            <button id="btnUpload" onclick="startUpload()" class="hidden px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition shadow-lg shadow-blue-500/20">
+              Analyze File
+            </button>
+          </div>
+
+          <div class="pt-2 flex items-center space-x-2 text-xs text-gray-400">
+            <input type="checkbox" id="asyncToggle" class="rounded bg-gray-800 border-gray-700 text-blue-500">
+            <label for="asyncToggle" class="cursor-pointer">Enable Async Job Queue (Recommended for files > 50MB)</label>
+          </div>
+        </div>
+
+        <div class="relative my-6">
+          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-gray-800"></div></div>
+          <div class="relative flex justify-center text-xs uppercase"><span class="bg-[#111827] px-3 text-gray-500 font-mono">or test without a file</span></div>
+        </div>
+
+        <div class="flex flex-col items-center">
+          <button onclick="loadDemoLog()" class="group flex items-center space-x-3 px-6 py-3 bg-gradient-to-r from-blue-600/20 to-purple-600/20 hover:from-blue-600/30 hover:to-purple-600/30 border border-blue-500/30 hover:border-blue-500/50 rounded-xl text-blue-300 transition duration-200 shadow-lg">
+            <span class="text-amber-400 text-xl group-hover:scale-125 transition-transform">⚡</span>
+            <div class="text-left">
+              <span class="block text-sm font-semibold text-white">Load Demo Log File</span>
+              <span class="block text-xs text-gray-400">Pre-loaded with live SQLi, XSS, Path Traversal, and Scanners</span>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Report Dashboard View (Initially Hidden) -->
+    <div id="reportView" class="hidden">
+      <!-- Report Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-gray-800 mb-6 gap-3">
+        <div>
+          <span class="text-xs font-mono uppercase text-blue-400 tracking-wider">Analysis Complete</span>
+          <h2 class="text-xl font-bold text-white">
+            Report for: <span id="reportSourceName" class="text-blue-400 font-mono">demo_access.log</span>
+          </h2>
+        </div>
+        <button onclick="exportJSON()" class="flex items-center space-x-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-medium rounded-lg border border-gray-700 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span>Export JSON</span>
+        </button>
+      </div>
+
+      <!-- Metric KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="p-5 rounded-xl bg-[#111827] border border-blue-500/20 shadow-lg">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Total Requests</p>
+          <p id="kpiTotalRequests" class="text-2xl font-bold mt-1 text-blue-400">0</p>
+          <p id="kpiUniqueIps" class="text-xs text-gray-400 mt-2">0 unique client IPs</p>
+        </div>
+        <div class="p-5 rounded-xl bg-[#111827] border border-red-500/20 shadow-lg">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Threats Flagged</p>
+          <p id="kpiTotalThreats" class="text-2xl font-bold mt-1 text-red-400">0</p>
+          <p class="text-xs text-gray-400 mt-2">Matching attack signatures</p>
+        </div>
+        <div class="p-5 rounded-xl bg-[#111827] border border-amber-500/20 shadow-lg">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Critical Events</p>
+          <p id="kpiCriticalEvents" class="text-2xl font-bold mt-1 text-amber-400">0</p>
+          <p class="text-xs text-gray-400 mt-2">SQLi & Path Traversals</p>
+        </div>
+        <div class="p-5 rounded-xl bg-[#111827] border border-purple-500/20 shadow-lg">
+          <p class="text-xs font-medium text-gray-400 uppercase tracking-wider">Malicious IPs</p>
+          <p id="kpiMaliciousIps" class="text-2xl font-bold mt-1 text-purple-400">0</p>
+          <p class="text-xs text-gray-400 mt-2">Identified threat sources</p>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div class="p-6 bg-[#111827] rounded-xl border border-gray-800 shadow-lg">
+          <h3 class="text-base font-semibold text-white mb-4 flex items-center space-x-2">
+            <span>🕒 Attacks Over Time (Hourly)</span>
+          </h3>
+          <div class="h-64"><canvas id="timelineChart"></canvas></div>
+        </div>
+        <div class="p-6 bg-[#111827] rounded-xl border border-gray-800 shadow-lg">
+          <h3 class="text-base font-semibold text-white mb-4 flex items-center space-x-2">
+            <span>🎯 Threat Types Breakdown</span>
+          </h3>
+          <div class="h-64"><canvas id="typeChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Top Malicious Attackers -->
+      <div class="bg-[#111827] rounded-xl border border-gray-800 shadow-lg overflow-hidden mb-6">
+        <div class="p-5 border-b border-gray-800 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-white flex items-center space-x-2">
+            <span class="text-red-400">💀</span>
+            <span>Top Malicious Attackers</span>
+          </h3>
+          <span class="text-xs font-mono text-gray-400 bg-gray-800 px-2.5 py-1 rounded-md border border-gray-700">Ranked by Threats</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#0B0F19] text-gray-400 font-mono uppercase border-b border-gray-800">
+              <tr>
+                <th class="px-5 py-3">Rank</th>
+                <th class="px-5 py-3">Attacker IP</th>
+                <th class="px-5 py-3">Location (GeoIP)</th>
+                <th class="px-5 py-3">Threats Flagged</th>
+                <th class="px-5 py-3">Total Requests</th>
+                <th class="px-5 py-3">Detected Vectors</th>
+              </tr>
+            </thead>
+            <tbody id="attackersTableBody" class="divide-y divide-gray-800 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Threat Log Explorer -->
+      <div class="bg-[#111827] rounded-xl border border-gray-800 shadow-lg overflow-hidden">
+        <div class="p-5 border-b border-gray-800 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div class="flex items-center space-x-2">
+            <span class="text-emerald-400 font-mono">&gt;_</span>
+            <h3 class="text-base font-semibold text-white">Threat Log Inspector</h3>
+            <span id="logCountBadge" class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full font-mono">0 events</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-3">
+            <input type="text" id="logSearch" onkeyup="filterLogs()" placeholder="Search IP, Path, Attack..." class="px-3 py-1.5 bg-[#0B0F19] border border-gray-700 rounded-lg text-xs text-white focus:border-blue-500 focus:outline-none">
+            <div class="flex items-center space-x-1 bg-[#0B0F19] p-1 rounded-lg border border-gray-700 text-xs">
+              <button onclick="setFilterSeverity('ALL')" class="sev-btn active px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium" data-sev="ALL">ALL</button>
+              <button onclick="setFilterSeverity('CRITICAL')" class="sev-btn px-2.5 py-1 rounded-md text-gray-400 hover:text-white" data-sev="CRITICAL">CRITICAL</button>
+              <button onclick="setFilterSeverity('HIGH')" class="sev-btn px-2.5 py-1 rounded-md text-gray-400 hover:text-white" data-sev="HIGH">HIGH</button>
+              <button onclick="setFilterSeverity('MEDIUM')" class="sev-btn px-2.5 py-1 rounded-md text-gray-400 hover:text-white" data-sev="MEDIUM">MEDIUM</button>
+            </div>
+          </div>
+        </div>
+        <div class="overflow-x-auto max-h-[480px]">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-[#0B0F19] text-gray-400 font-mono uppercase border-b border-gray-800 sticky top-0 z-10">
+              <tr>
+                <th class="px-5 py-3">Severity</th>
+                <th class="px-5 py-3">Time</th>
+                <th class="px-5 py-3">Attacker IP</th>
+                <th class="px-5 py-3">Method & Path</th>
+                <th class="px-5 py-3">Status</th>
+                <th class="px-5 py-3">Threat Detection Details</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody" class="divide-y divide-gray-800 font-mono"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-gray-800/60 py-6 text-center text-xs text-gray-400 mt-12">
+    <p>LogLens • Simplified Security Log Analysis & Threat Detection Engine</p>
+  </footer>
+
+  <script>
+    let currentReport = null;
+    let selectedFile = null;
+    let selectedSeverity = 'ALL';
+    let timelineChartInstance = null;
+    let typeChartInstance = null;
+
+    // Drag and drop setup
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('border-blue-500', 'bg-blue-500/10'); });
+    dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('border-blue-500', 'bg-blue-500/10'); });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('border-blue-500', 'bg-blue-500/10');
+      if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+
+    function handleFileSelected(e) {
+      if (e.target.files.length) handleFile(e.target.files[0]);
+    }
+
+    function handleFile(file) {
+      selectedFile = file;
+      document.getElementById('selectedFileName').textContent = file.name;
+      document.getElementById('btnUpload').classList.remove('hidden');
+    }
+
+    function showStatus(text) {
+      const el = document.getElementById('statusToast');
+      document.getElementById('statusText').textContent = text;
+      el.classList.remove('hidden');
+    }
+
+    function hideStatus() {
+      document.getElementById('statusToast').classList.add('hidden');
+    }
+
+    function showError(text) {
+      const el = document.getElementById('errorToast');
+      document.getElementById('errorText').textContent = text;
+      el.classList.remove('hidden');
+    }
+
+    function hideError() {
+      document.getElementById('errorToast').classList.add('hidden');
+    }
+
+    async function loadDemoLog() {
+      hideError();
+      showStatus('Loading pre-loaded demo access log...');
+      try {
+        const res = await fetch('/api/demo');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        renderDashboard(data.report, data.source);
+      } catch (err) {
+        showError('Failed to load demo log: ' + err.message);
+      } finally {
+        hideStatus();
+      }
+    }
+
+    async function startUpload() {
+      if (!selectedFile) return;
+      hideError();
+      const isAsync = document.getElementById('asyncToggle').checked;
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      if (isAsync) {
+        showStatus('Uploading file to background job queue...');
+        try {
+          const res = await fetch('/api/jobs/upload', { method: 'POST', body: formData });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const { job_id } = await res.json();
+          showStatus(`Job #${job_id.slice(0, 8)} queued. Processing...`);
+
+          const timer = setInterval(async () => {
+            const statusRes = await fetch(`/api/jobs/${job_id}`);
+            if (!statusRes.ok) return;
+            const jobData = await statusRes.json();
+            if (jobData.status === 'completed') {
+              clearInterval(timer);
+              hideStatus();
+              renderDashboard(jobData.result, jobData.filename);
+            } else if (jobData.status === 'failed') {
+              clearInterval(timer);
+              hideStatus();
+              showError(`Job failed: ${jobData.error}`);
+            } else {
+              showStatus(`Job status: ${jobData.status}...`);
+            }
+          }, 1500);
+        } catch (err) {
+          hideStatus();
+          showError(`Async upload failed: ${err.message}`);
+        }
+      } else {
+        showStatus('Uploading and analyzing log file...');
+        try {
+          const res = await fetch('/api/analyze', { method: 'POST', body: formData });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          renderDashboard(data.report, data.filename);
+        } catch (err) {
+          showError(`Analysis failed: ${err.message}`);
+        } finally {
+          hideStatus();
+        }
+      }
+    }
+
+    function renderDashboard(report, sourceName) {
+      currentReport = report;
+      document.getElementById('uploadView').classList.add('hidden');
+      document.getElementById('reportView').classList.remove('hidden');
+      document.getElementById('btnNewLog').classList.remove('hidden');
+      document.getElementById('reportSourceName').textContent = sourceName || 'access.log';
+
+      // KPI cards
+      const s = report.summary || {};
+      document.getElementById('kpiTotalRequests').textContent = (s.total_requests || 0).toLocaleString();
+      document.getElementById('kpiUniqueIps').textContent = `${s.unique_ips || 0} unique client IPs`;
+      document.getElementById('kpiTotalThreats').textContent = (s.total_threats || 0).toLocaleString();
+      document.getElementById('kpiCriticalEvents').textContent = (s.severity_breakdown?.critical || 0).toLocaleString();
+      document.getElementById('kpiMaliciousIps').textContent = (s.malicious_ips || 0).toLocaleString();
+
+      // Charts
+      renderTimelineChart(report.timeline || []);
+      renderTypeChart(report.attack_types || []);
+
+      // Tables
+      renderAttackersTable(report.top_attackers || []);
+      filterLogs();
+    }
+
+    function renderTimelineChart(timeline) {
+      const ctx = document.getElementById('timelineChart').getContext('2d');
+      if (timelineChartInstance) timelineChartInstance.destroy();
+
+      const labels = timeline.map(item => item.hour.includes('T') ? item.hour.split('T')[1] : item.hour.split(' ')[1] || item.hour);
+      const data = timeline.map(item => item.count);
+
+      timelineChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Attacks per Hour',
+            data: data,
+            borderColor: '#EF4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.2)',
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#EF4444'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF', font: { size: 10 } } },
+            y: { grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF', font: { size: 10 }, precision: 0 } }
+          }
+        }
+      });
+    }
+
+    function renderTypeChart(types) {
+      const ctx = document.getElementById('typeChart').getContext('2d');
+      if (typeChartInstance) typeChartInstance.destroy();
+
+      const labels = types.map(t => t.type);
+      const data = types.map(t => t.count);
+
+      typeChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Detections',
+            data: data,
+            backgroundColor: ['#EF4444', '#F59E0B', '#3B82F6', '#8B5CF6', '#10B981', '#EC4899'],
+            borderRadius: 4
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: '#1F2937' }, ticks: { color: '#9CA3AF', font: { size: 10 }, precision: 0 } },
+            y: { grid: { color: '#1F2937' }, ticks: { color: '#E5E7EB', font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function renderAttackersTable(attackers) {
+      const tbody = document.getElementById('attackersTableBody');
+      tbody.innerHTML = '';
+      if (!attackers.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-4 text-center text-gray-500">No malicious attackers detected</td></tr>';
+        return;
+      }
+      attackers.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/40 transition-colors';
+        const tags = (item.attack_types || []).map(t => `<span class="bg-purple-950/50 text-purple-300 border border-purple-800/40 px-2 py-0.5 rounded text-[10px] mr-1 inline-block my-0.5">${escapeHtml(t)}</span>`).join('');
+        tr.innerHTML = `
+          <td class="px-5 py-3 text-gray-500 font-bold">#${idx + 1}</td>
+          <td class="px-5 py-3 text-red-400 font-semibold">${escapeHtml(item.ip)}</td>
+          <td class="px-5 py-3 text-gray-300">
+            <span class="inline-flex items-center space-x-1.5 bg-gray-800 px-2 py-0.5 rounded border border-gray-700">
+              <span>🌐</span>
+              <span>${escapeHtml(item.country || 'Unknown')}</span>
+              ${item.country_code && item.country_code !== 'LAN' ? `<span class="text-gray-400 text-[10px]">(${escapeHtml(item.country_code)})</span>` : ''}
+            </span>
+          </td>
+          <td class="px-5 py-3"><span class="bg-red-500/20 text-red-400 font-bold px-2 py-0.5 rounded border border-red-500/30">${item.threat_count}</span></td>
+          <td class="px-5 py-3 text-gray-400">${item.total_requests}</td>
+          <td class="px-5 py-3">${tags}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setFilterSeverity(sev) {
+      selectedSeverity = sev;
+      document.querySelectorAll('.sev-btn').forEach(btn => {
+        if (btn.dataset.sev === sev) {
+          btn.className = 'sev-btn active px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium';
+        } else {
+          btn.className = 'sev-btn px-2.5 py-1 rounded-md text-gray-400 hover:text-white';
+        }
+      });
+      filterLogs();
+    }
+
+    function filterLogs() {
+      if (!currentReport || !currentReport.flagged_entries) return;
+      const query = (document.getElementById('logSearch').value || '').toLowerCase();
+      const tbody = document.getElementById('logsTableBody');
+      tbody.innerHTML = '';
+
+      const filtered = currentReport.flagged_entries.filter(entry => {
+        const pathVal = (entry.decoded_path || entry.path || '').toLowerCase();
+        const matchesQuery = entry.ip.toLowerCase().includes(query) ||
+                             pathVal.includes(query) ||
+                             entry.threats.some(t => t.type.toLowerCase().includes(query));
+        const matchesSev = selectedSeverity === 'ALL' || (entry.severity || '').toUpperCase() === selectedSeverity;
+        return matchesQuery && matchesSev;
+      });
+
+      document.getElementById('logCountBadge').textContent = `${filtered.length} events`;
+
+      if (!filtered.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-5 py-4 text-center text-gray-500">No events match current filter</td></tr>';
+        return;
+      }
+
+      filtered.forEach(entry => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-gray-800/30 transition-colors';
+        const sevClass = entry.severity === 'critical' ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+                         (entry.severity === 'high' ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' : 'bg-amber-500/20 text-amber-400 border-amber-500/40');
+
+        // Severity
+        const tdSev = document.createElement('td');
+        tdSev.className = 'px-5 py-3';
+        const spanSev = document.createElement('span');
+        spanSev.className = `inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${sevClass}`;
+        spanSev.textContent = entry.severity;
+        tdSev.appendChild(spanSev);
+
+        // Time
+        const tdTime = document.createElement('td');
+        tdTime.className = 'px-5 py-3 text-gray-400 whitespace-nowrap';
+        tdTime.textContent = entry.timestamp?.replace('T', ' ') || entry.timestamp_raw || '';
+
+        // IP
+        const tdIp = document.createElement('td');
+        tdIp.className = 'px-5 py-3 text-red-400 font-semibold whitespace-nowrap';
+        tdIp.textContent = entry.ip;
+
+        // Path (Safe DOM construction - completely immune to XSS)
+        const tdPath = document.createElement('td');
+        tdPath.className = 'px-5 py-3 max-w-xs truncate text-gray-200';
+        tdPath.title = entry.decoded_path || entry.path || '';
+        const spanMethod = document.createElement('span');
+        spanMethod.className = 'font-bold text-blue-400 mr-1';
+        spanMethod.textContent = entry.method;
+        const spanPath = document.createElement('span');
+        spanPath.textContent = entry.decoded_path || entry.path || '';
+        tdPath.appendChild(spanMethod);
+        tdPath.appendChild(spanPath);
+
+        // Status
+        const tdStatus = document.createElement('td');
+        tdStatus.className = 'px-5 py-3';
+        const spanStatus = document.createElement('span');
+        spanStatus.className = `font-bold ${entry.status_code >= 400 ? 'text-amber-400' : 'text-emerald-400'}`;
+        spanStatus.textContent = entry.status_code;
+        tdStatus.appendChild(spanStatus);
+
+        // Threats
+        const tdThreats = document.createElement('td');
+        tdThreats.className = 'px-5 py-3';
+        (entry.threats || []).forEach(t => {
+          const div = document.createElement('div');
+          const spanT = document.createElement('span');
+          spanT.className = 'text-white font-medium';
+          spanT.textContent = t.type + ': ';
+          const spanD = document.createElement('span');
+          spanD.className = 'text-gray-400';
+          spanD.textContent = t.description;
+          div.appendChild(spanT);
+          div.appendChild(spanD);
+          tdThreats.appendChild(div);
+        });
+
+        tr.appendChild(tdSev);
+        tr.appendChild(tdTime);
+        tr.appendChild(tdIp);
+        tr.appendChild(tdPath);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdThreats);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function exportJSON() {
+      if (!currentReport) return;
+      const blob = new Blob([JSON.stringify(currentReport, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `LogLens_Report_${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function resetDashboard() {
+      currentReport = null;
+      selectedFile = null;
+      document.getElementById('reportView').classList.add('hidden');
+      document.getElementById('uploadView').classList.remove('hidden');
+      document.getElementById('btnNewLog').classList.add('hidden');
+      document.getElementById('selectedFileName').textContent = 'Drag & drop your web server log file here';
+      document.getElementById('btnUpload').classList.add('hidden');
+      document.getElementById('fileInput').value = '';
+    }
+  </script>
+</body>
+</html>

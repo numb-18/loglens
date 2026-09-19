@@ -1,0 +1,84 @@
+{
+  "signatures": [
+    {
+      "id": "sqli_union",
+      "type": "SQL Injection",
+      "severity": "critical",
+      "pattern": "(?i)(union\\s+select|union\\s+all\\s+select)",
+      "target": "path",
+      "description": "UNION SELECT injection attempt to exfiltrate database contents"
+    },
+    {
+      "id": "sqli_boolean",
+      "type": "SQL Injection",
+      "severity": "high",
+      "pattern": "(?i)('|\")\\s*(or|and)\\s*('|\")?.*(=|<|>|in|like)",
+      "target": "path",
+      "description": "Boolean-based SQL injection attempt (e.g. ' OR 1=1)"
+    },
+    {
+      "id": "sqli_commands",
+      "type": "SQL Injection",
+      "severity": "critical",
+      "pattern": "(?i)(information_schema|waitfor\\s+delay|sleep\\(\\d+\\)|benchmark\\(\\d+,|load_file\\()",
+      "target": "path",
+      "description": "Blind SQL injection or administrative schema query"
+    },
+    {
+      "id": "xss_script_tags",
+      "type": "Cross-Site Scripting (XSS)",
+      "severity": "high",
+      "pattern": "(?i)(<script.*?>.*?</script>|<script|%3Cscript)",
+      "target": "path",
+      "description": "Script tag injected into request URI"
+    },
+    {
+      "id": "xss_event_handlers",
+      "type": "Cross-Site Scripting (XSS)",
+      "severity": "high",
+      "pattern": "(?i)(onerror\\s*=|onload\\s*=|onclick\\s*=|onmouseover\\s*=|alert\\s*\\(|document\\.cookie)",
+      "target": "path",
+      "description": "DOM/Event-handler XSS execution vector"
+    },
+    {
+      "id": "xss_javascript_protocol",
+      "type": "Cross-Site Scripting (XSS)",
+      "severity": "high",
+      "pattern": "(?i)javascript\\s*:",
+      "target": "path",
+      "description": "JavaScript URI scheme execution"
+    },
+    {
+      "id": "dir_traversal",
+      "type": "Directory Traversal",
+      "severity": "critical",
+      "pattern": "(?i)(\\.\\.[\\/\\\\])+",
+      "target": "path",
+      "description": "Path traversal attempt using parent directory sequences"
+    },
+    {
+      "id": "sensitive_files",
+      "type": "Directory Traversal",
+      "severity": "critical",
+      "pattern": "(?i)(/etc/passwd|/etc/shadow|/windows/win\\.ini|/boot\\.ini|/proc/self/environ|\\.env|web\\.config)",
+      "target": "path",
+      "description": "Direct access attempt to sensitive system or environment configuration files"
+    },
+    {
+      "id": "scanners_user_agent",
+      "type": "Security Scanner",
+      "severity": "medium",
+      "pattern": "(?i)(nikto|sqlmap|nmap|dirbuster|acunetix|wpscan|masscan|zgrab|gobuster)",
+      "target": "user_agent",
+      "description": "Automated security scanner or vulnerability scanner tool identified"
+    },
+    {
+      "id": "admin_probing",
+      "type": "Reconnaissance",
+      "severity": "medium",
+      "pattern": "(?i)(/wp-admin|/phpmyadmin|/admin/login|/manager/html|/\\.git|/\\.svn|/solr|/actuator)",
+      "target": "path",
+      "description": "Probing for administrative consoles or exposed VCS repositories"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+# ====================================================================
+# LogLens Test Web Server Access Log (Nginx Combined Format)
+# Ready for drag-and-drop or file upload testing
+# ====================================================================
+
+# 1. Normal Benign Visitor (United States)
+198.51.100.42 - - [19/Sep/2026:10:00:15 +0000] "GET /index.html HTTP/1.1" 200 4520 "https://google.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+198.51.100.42 - - [19/Sep/2026:10:00:16 +0000] "GET /static/css/main.css HTTP/1.1" 200 1250 "https://example.com/index.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+198.51.100.42 - - [19/Sep/2026:10:00:17 +0000] "GET /static/js/bundle.js HTTP/1.1" 200 38400 "https://example.com/index.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+198.51.100.42 - - [19/Sep/2026:10:01:05 +0000] "GET /about-us HTTP/1.1" 200 6820 "https://example.com/index.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+
+# 2. Search Engine Crawler (Googlebot)
+66.249.66.1 - - [19/Sep/2026:10:15:22 +0000] "GET /robots.txt HTTP/1.1" 200 150 "-" "Googlebot/2.1 (+http://www.google.com/bot.html)"
+66.249.66.1 - - [19/Sep/2026:10:15:25 +0000] "GET /sitemap.xml HTTP/1.1" 200 12050 "-" "Googlebot/2.1 (+http://www.google.com/bot.html)"
+66.249.66.1 - - [19/Sep/2026:10:15:30 +0000] "GET /blog/security-best-practices HTTP/1.1" 200 8940 "-" "Googlebot/2.1 (+http://www.google.com/bot.html)"
+
+# 3. SQL Injection Attacks (Attacker IP: 185.220.101.5 - Germany)
+185.220.101.5 - - [19/Sep/2026:11:02:10 +0000] "GET /catalog.php?category=1%27%20OR%201=1-- HTTP/1.1" 200 14500 "-" "Mozilla/5.0 (X11; Linux x86_64)"
+185.220.101.5 - - [19/Sep/2026:11:03:45 +0000] "GET /catalog.php?category=1%20UNION%20SELECT%20null,username,password%20FROM%20admin_users-- HTTP/1.1" 500 820 "-" "Mozilla/5.0 (X11; Linux x86_64)"
+185.220.101.5 - - [19/Sep/2026:11:04:12 +0000] "GET /catalog.php?category=1;WAITFOR%20DELAY%20%270:0:5%27-- HTTP/1.1" 200 1200 "-" "Mozilla/5.0 (X11; Linux x86_64)"
+185.220.101.5 - - [19/Sep/2026:11:04:50 +0000] "GET /api/user?id=1%20AND%20(SELECT%20COUNT(*)%20FROM%20information_schema.tables)>0 HTTP/1.1" 200 3200 "-" "Mozilla/5.0 (X11; Linux x86_64)"
+
+# 4. Cross-Site Scripting (XSS) Payloads (Attacker IP: 203.0.113.195 - China)
+203.0.113.195 - - [19/Sep/2026:12:20:00 +0000] "GET /search?q=%3Cscript%3Ealert(%27XSS_PWNED%27)%3C/script%3E HTTP/1.1" 200 4200 "https://example.com/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+203.0.113.195 - - [19/Sep/2026:12:20:30 +0000] "GET /comment?name=Tester&msg=%3Cimg%20src=x%20onerror=console.log(%27XSS_POC%27)%3E HTTP/1.1" 200 3100 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+203.0.113.195 - - [19/Sep/2026:12:21:15 +0000] "GET /redirect?url=javascript:alert(document.domain) HTTP/1.1" 302 450 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+
+# 5. Directory Traversal & Sensitive File Hunting (Attacker IP: 141.98.10.30 - Lithuania)
+141.98.10.30 - - [19/Sep/2026:13:10:01 +0000] "GET /download.php?file=../../../../../../etc/passwd HTTP/1.1" 403 280 "-" "curl/7.81.0"
+141.98.10.30 - - [19/Sep/2026:13:10:04 +0000] "GET /download.php?file=..%2F..%2F..%2F..%2Fwindows%2Fwin.ini HTTP/1.1" 403 280 "-" "curl/7.81.0"
+141.98.10.30 - - [19/Sep/2026:13:10:12 +0000] "GET /.env HTTP/1.1" 404 162 "-" "curl/7.81.0"
+141.98.10.30 - - [19/Sep/2026:13:10:15 +0000] "GET /wp-config.php.bak HTTP/1.1" 404 162 "-" "curl/7.81.0"
+141.98.10.30 - - [19/Sep/2026:13:10:18 +0000] "GET /web.config HTTP/1.1" 404 162 "-" "curl/7.81.0"
+
+# 6. Automated Vulnerability Scanners (Attacker IP: 194.26.29.112 - Netherlands)
+194.26.29.112 - - [19/Sep/2026:14:05:00 +0000] "GET /admin/login.php HTTP/1.1" 404 162 "-" "Nikto/2.5.0"
+194.26.29.112 - - [19/Sep/2026:14:05:02 +0000] "GET /phpmyadmin/index.php HTTP/1.1" 404 162 "-" "Nikto/2.5.0"
+194.26.29.112 - - [19/Sep/2026:14:05:04 +0000] "GET /.git/HEAD HTTP/1.1" 404 162 "-" "Nikto/2.5.0"
+194.26.29.112 - - [19/Sep/2026:14:05:06 +0000] "GET /manager/html HTTP/1.1" 404 162 "-" "Nikto/2.5.0"
+
+# 7. Automated SQLmap Scanner (Attacker IP: 103.251.167.20 - India)
+103.251.167.20 - - [19/Sep/2026:14:40:10 +0000] "GET /items?id=1%20AND%201=1 HTTP/1.1" 200 2410 "-" "sqlmap/1.6.4#stable"
+103.251.167.20 - - [19/Sep/2026:14:40:12 +0000] "GET /items?id=1%20UNION%20ALL%20SELECT%20NULL,NULL,NULL,version()-- HTTP/1.1" 200 4890 "-" "sqlmap/1.6.4#stable"
+
+# 8. Brute Force Login Attack (Attacker IP: 45.154.255.88 - Russia) - Rapid 401s
+45.154.255.88 - - [19/Sep/2026:15:10:01 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:02 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:03 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:04 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:05 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:06 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:07 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+45.154.255.88 - - [19/Sep/2026:15:10:08 +0000] "POST /wp-login.php HTTP/1.1" 401 1250 "https://example.com/wp-login.php" "Mozilla/5.0"
+
+# 9. Normal Visitors Wrapping Up
+198.51.100.42 - - [19/Sep/2026:16:00:20 +0000] "GET /contact HTTP/1.1" 200 3240 "https://example.com/" "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
