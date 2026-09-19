@@ -3,7 +3,9 @@ import uuid
 import time
 import shutil
 import threading
+import base64
 from typing import Dict, Any, Optional
+from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
@@ -143,6 +145,36 @@ async def analyze_log_sync(file: UploadFile = File(...)):
         report = process_log_file(temp_path)
         return {
             "filename": file.filename,
+            "report": report
+        }
+    finally:
+        if os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
+
+class LogUploadPayload(BaseModel):
+    filename: str
+    content_base64: str
+
+@app.post("/api/analyze-safe")
+async def analyze_log_safe(payload: LogUploadPayload):
+    """
+    WAF-Safe analysis endpoint.
+    Receives base64-encoded log content to prevent Cloudflare/WAF 403 blocks on security logs.
+    """
+    temp_filename = f"{uuid.uuid4().hex}_{payload.filename}"
+    temp_path = os.path.join(TEMP_UPLOADS_DIR, temp_filename)
+
+    try:
+        raw_bytes = base64.b64decode(payload.content_base64)
+        with open(temp_path, "wb") as f:
+            f.write(raw_bytes)
+
+        report = process_log_file(temp_path)
+        return {
+            "filename": payload.filename,
             "report": report
         }
     finally:

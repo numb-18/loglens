@@ -357,16 +357,32 @@
         }
       } else {
         showStatus('Uploading and analyzing log file...');
-        try {
-          const res = await fetch('/api/analyze', { method: 'POST', body: formData });
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const data = await res.json();
-          renderDashboard(data.report, data.filename);
-        } catch (err) {
-          showError(`Analysis failed: ${err.message}`);
-        } finally {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const base64Content = reader.result.split(',')[1];
+            const res = await fetch('/api/analyze-safe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                filename: selectedFile.name,
+                content_base64: base64Content
+              })
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
+            renderDashboard(data.report, data.filename);
+          } catch (err) {
+            showError(`Analysis failed: ${err.message}`);
+          } finally {
+            hideStatus();
+          }
+        };
+        reader.onerror = () => {
+          showError('Failed to read local file.');
           hideStatus();
-        }
+        };
+        reader.readAsDataURL(selectedFile);
       }
     }
 
